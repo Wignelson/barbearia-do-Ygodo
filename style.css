@@ -1,0 +1,433 @@
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700&display=swap");
+
+:root {
+  --preto: #0d0d0d;
+  --preto-elevado: #171412;
+  --preto-elevado-2: #1f1b18;
+  --dourado: #c9a227;
+  --dourado-claro: #e0c25f;
+  --vinho: #7a2230;
+  --vinho-claro: #9c3a48;
+  --texto: #f2ede1;
+  --texto-suave: #a89f8f;
+  --borda: #2c2621;
+
+  --fonte-display: "Fraunces", serif;
+  --fonte-corpo: "Manrope", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--preto);
+  color: var(--texto);
+  font-family: var(--fonte-corpo);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--dourado-claro);
+}
+
+.muted {
+  color: var(--texto-suave);
+}
+
+/* ---------- Layout geral ---------- */
+
+.pagina {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 0 20px 80px;
+}
+
+.topo {
+  padding: 56px 0 36px;
+  text-align: center;
+  border-bottom: 1px solid var(--borda);
+  margin-bottom: 40px;
+  position: relative;
+}
+
+.topo::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 64px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--vinho-claro), var(--dourado));
+}
+
+.topo__nome {
+  font-family: var(--fonte-display);
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-size: clamp(2.4rem, 8vw, 3.4rem);
+  color: var(--dourado-claro);
+  margin: 0 0 10px;
+  letter-spacing: 0.01em;
+}
+
+.topo__tagline {
+  color: var(--texto-suave);
+  font-size: 1rem;
+  margin: 0;
+}
+
+section {
+  margin-bottom: 40px;
+}
+
+h2 {
+  font-family: var(--fonte-display);
+  font-weight: 600;
+  font-size: 1.4rem;
+  margin: 0 0 18px;
+  color: var(--texto);
+}
+
+/* ---------- Calendário ---------- */
+
+.calendar {
+  background: var(--preto-elevado);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 18px;
+}
+
+.calendar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.calendar__title {
+  font-family: var(--fonte-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  text-transform: capitalize;
+}
+
+.calendar__nav {
+  background: transparent;
+  border: 1px solid var(--borda);
+  color: var(--texto);
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.calendar__nav:hover:not(:disabled) {
+  border-color: var(--dourado);
+}
+
+.calendar__nav:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+.calendar__weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  text-align: center;
+  color: var(--texto-suave);
+  font-size: 0.75rem;
+  margin-bottom: 6px;
+}
+
+.calendar__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendar__day {
+  aspect-ratio: 1;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--texto);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.calendar__day:hover:not(:disabled) {
+  border-color: var(--dourado);
+}
+
+.calendar__day.is-today {
+  border-color: var(--texto-suave);
+}
+
+.calendar__day.is-selected {
+  background: var(--dourado);
+  color: var(--preto);
+  font-weight: 700;
+  border-color: var(--dourado);
+}
+
+.calendar__day.is-disabled {
+  color: #4a4540;
+  cursor: not-allowed;
+}
+
+.calendar__day.is-blocked {
+  color: var(--vinho-claro);
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+
+/* ---------- Horários ---------- */
+
+.slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(78px, 1fr));
+  gap: 8px;
+}
+
+.slot {
+  padding: 10px 6px;
+  background: var(--preto-elevado);
+  border: 1px solid var(--borda);
+  border-left: 3px solid var(--dourado);
+  color: var(--texto);
+  border-radius: 3px;
+  font-family: var(--fonte-corpo);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.slot:hover:not(:disabled) {
+  background: var(--preto-elevado-2);
+}
+
+.slot.is-selected {
+  background: var(--dourado);
+  border-left-color: var(--dourado);
+  color: var(--preto);
+}
+
+.slot.is-disabled {
+  border-left-color: var(--borda);
+  color: #4a4540;
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+/* ---------- Formulário ---------- */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--preto-elevado);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 20px;
+}
+
+.form__campo {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form__campo label {
+  font-size: 0.85rem;
+  color: var(--texto-suave);
+}
+
+.form__campo input,
+.form__campo select {
+  background: var(--preto);
+  border: 1px solid var(--borda);
+  color: var(--texto);
+  padding: 11px 12px;
+  border-radius: 4px;
+  font-family: var(--fonte-corpo);
+  font-size: 0.95rem;
+}
+
+.form__campo input:focus,
+.form__campo select:focus {
+  outline: 2px solid var(--dourado);
+  outline-offset: 1px;
+  border-color: var(--dourado);
+}
+
+.btn {
+  display: inline-block;
+  background: var(--vinho);
+  color: var(--texto);
+  border: none;
+  padding: 13px 20px;
+  border-radius: 4px;
+  font-family: var(--fonte-corpo);
+  font-weight: 700;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--vinho-claro);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.feedback {
+  color: var(--vinho-claro);
+  font-size: 0.9rem;
+  min-height: 1.2em;
+}
+
+/* ---------- Sucesso ---------- */
+
+.success {
+  text-align: center;
+  background: var(--preto-elevado);
+  border: 1px solid var(--dourado);
+  border-radius: 6px;
+  padding: 32px 20px;
+}
+
+.success__titulo {
+  font-family: var(--fonte-display);
+  font-size: 1.4rem;
+  color: var(--dourado-claro);
+  margin: 0 0 8px;
+}
+
+.success__details {
+  display: block;
+  margin: 4px 0 20px;
+  color: var(--texto);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+/* ---------- Painel do barbeiro ---------- */
+
+.login-box {
+  max-width: 320px;
+  margin: 80px auto 0;
+  background: var(--preto-elevado);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 28px;
+  text-align: center;
+}
+
+.login-box h2 {
+  margin-bottom: 20px;
+}
+
+.dia-detalhe {
+  background: var(--preto-elevado);
+  border: 1px solid var(--borda);
+  border-radius: 6px;
+  padding: 18px;
+  margin-top: 16px;
+}
+
+.dia-detalhe__topo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.status-dia {
+  font-size: 0.85rem;
+  color: var(--dourado-claro);
+}
+
+.status-dia.is-fechado {
+  color: var(--vinho-claro);
+}
+
+.agendamento-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--borda);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.agendamento-card__hora {
+  font-family: var(--fonte-display);
+  font-weight: 600;
+  color: var(--dourado-claro);
+  min-width: 52px;
+}
+
+.agendamento-card__info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  font-size: 0.88rem;
+}
+
+.agendamento-card__info span {
+  color: var(--texto-suave);
+}
+
+.agendamento-card__cancelar {
+  background: transparent;
+  border: 1px solid var(--vinho-claro);
+  color: var(--vinho-claro);
+  padding: 7px 12px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.agendamento-card__cancelar:hover {
+  background: var(--vinho);
+  color: var(--texto);
+}
+
+.rodape {
+  text-align: center;
+  color: var(--texto-suave);
+  font-size: 0.8rem;
+  margin-top: 60px;
+}
+
+.rodape a {
+  color: var(--texto-suave);
+}
+
+@media (max-width: 420px) {
+  .topo {
+    padding: 40px 0 28px;
+  }
+
+  .form {
+    padding: 16px;
+  }
+}
