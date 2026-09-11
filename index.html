@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barbearia — Agendar horário</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="pagina">
+    <header class="topo">
+      <h1 class="topo__nome">Barbearia do Ygodo </h1>
+      <p class="topo__tagline">Agende seu horário em poucos cliques</p>
+    </header>
+
+    <section id="calendar-section">
+      <h2>1. Escolha o dia</h2>
+      <div id="calendar"></div>
+    </section>
+
+    <section id="slots-section" hidden>
+      <h2>2. Escolha o horário — <span id="selected-date-label"></span></h2>
+      <div id="slots-grid" class="slots-grid"></div>
+    </section>
+
+    <section id="form-section" hidden>
+      <h2>3. Seus dados — <span id="selected-slot-label"></span></h2>
+      <form id="booking-form" class="form">
+        <div class="form__campo">
+          <label for="nome">Nome</label>
+          <input id="nome" name="nome" type="text" required autocomplete="name" />
+        </div>
+        <div class="form__campo">
+          <label for="telefone">Telefone / WhatsApp</label>
+          <input id="telefone" name="telefone" type="tel" required autocomplete="tel" placeholder="(00) 00000-0000" />
+        </div>
+        <div class="form__campo">
+          <label for="servico">Serviço</label>
+          <select id="servico" name="servico" required>
+            <option value="" disabled selected>Selecione</option>
+            <option value="Corte">Corte</option>
+            <option value="Barba">Barba</option>
+            <option value="Corte + Barba">Corte + Barba</option>
+            <option value="Sobrancelha">Sobrancelha</option>
+          </select>
+        </div>
+        <p id="feedback" class="feedback"></p>
+        <button type="submit" class="btn">Confirmar agendamento</button>
+      </form>
+    </section>
+
+    <section id="success-section" class="success" hidden>
+      <p class="success__titulo">Agendamento confirmado!</p>
+      <span class="success__details"></span>
+      <button id="novo-agendamento" type="button" class="btn">Fazer outro agendamento</button>
+    </section>
+
+    <footer class="rodape">
+      <a href="admin.html">Área do barbeiro</a>
+    </footer>
+  </div>
+
+<script type="module" src="booking.js"></script>
+</body>
+</html>

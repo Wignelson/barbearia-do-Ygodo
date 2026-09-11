@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Barbearia — Painel do barbeiro</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="pagina">
+    <header class="topo">
+      <h1 class="topo__nome">Painel do Barbeiro</h1>
+      <p class="topo__tagline">Gerencie seus horários e dias de folga</p>
+    </header>
+
+    <section id="login-section">
+      <div class="login-box">
+        <h2>Entrar</h2>
+        <form id="login-form" class="form">
+          <div class="form__campo">
+            <label for="senha">Senha</label>
+            <input id="senha" name="senha" type="password" required autocomplete="current-password" />
+          </div>
+          <p id="login-erro" class="feedback"></p>
+          <button type="submit" class="btn">Entrar</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="painel-section" hidden>
+      <h2>Selecione um dia</h2>
+      <div id="admin-calendar"></div>
+
+      <div id="dia-detalhe" class="dia-detalhe" hidden>
+        <div class="dia-detalhe__topo">
+          <div>
+            <strong id="admin-data-label"></strong><br />
+            <span id="status-dia" class="status-dia"></span>
+          </div>
+          <button id="bloquear-dia" type="button" class="btn">Fechar este dia</button>
+        </div>
+        <div id="lista-agendamentos"></div>
+      </div>
+    </section>
+
+    <footer class="rodape">
+      <a href="index.html">← Voltar para agendamento</a>
+    </footer>
+  </div>
+
+   <script type="module" src="admin.js"></script>
+</body>
+</html>
