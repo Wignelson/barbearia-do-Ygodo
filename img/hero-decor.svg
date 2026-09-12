@@ -105,4 +105,4 @@ xml
     <circle cx="200" cy="56" r="26" fill="url(#sphereGrad)" stroke="#14110f" stroke-width="2" />
     <ellipse cx="191" cy="47" rx="8" ry="5" fill="#fff8e4" opacity="0.7" />
   </g>
-</svg>
+</svg>          
