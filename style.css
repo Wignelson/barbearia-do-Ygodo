@@ -431,3 +431,44 @@ h2 {
     padding: 16px;
   }
 }
+.btn--secundario {
+  background: transparent;
+  border: 1px solid var(--dourado);
+  color: var(--dourado-claro);
+}
+
+.btn--secundario:hover:not(:disabled) {
+  background: rgba(201, 162, 39, 0.12);
+}
+
+.slot--ocupado {
+  background: var(--vinho);
+  border-left-color: var(--vinho-claro);
+  color: var(--texto);
+  cursor: pointer;
+}
+
+.horario-personalizado {
+  margin-bottom: 20px;
+}
+
+.horario-personalizado__campos {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.horario-personalizado__botoes {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+h3 {
+  font-family: var(--fonte-display);
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin: 20px 0 10px;
+  color: var(--dourado-claro);
+}

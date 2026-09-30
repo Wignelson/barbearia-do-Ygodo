@@ -12,5 +12,5 @@ export const firebaseConfig = {
   appId: "1:282927640906:web:68d4234605f95f3886d1b3"
 };
 
-// Senha de acesso ao painel do barbeiro (troque por uma senha sua)
-export const ADMIN_PASSWORD = "trocar123";
+// E-mail da conta autorizada para entrar no painel do barbeiro.
+export const ADMIN_EMAIL = "wignercordeiropedroso@gmail.com";

@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Barbearia — Painel do barbeiro</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
 </head>
 <body>
   <div class="pagina">
     <header class="topo">
       <h1 class="topo__nome">Painel do Barbeiro</h1>
-       <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
       <p class="topo__tagline">Gerencie seus horários e dias de folga</p>
     </header>
 
@@ -22,17 +22,25 @@
             <label for="senha">Senha</label>
             <input id="senha" name="senha" type="password" required autocomplete="current-password" />
           </div>
-          <p id="login-erro" class="feedback"></p>
+          <p id="login-erro" class="feedback" role="alert"></p>
           <button type="submit" class="btn">Entrar</button>
         </form>
       </div>
     </section>
 
     <section id="painel-section" hidden>
+      <button id="sair-painel" type="button" class="btn btn--secundario">Sair</button>
       <h2>Selecione um dia</h2>
       <div id="admin-calendar"></div>
 
-      <div id="dia-detalhe" class="dia-detalhe" hidden>
+      <section class="horario-personalizado">
+        <h3>Duração de cada serviço</h3>
+        <div id="duracoes-grid" class="horario-personalizado__campos"></div>
+        <button type="button" id="salvar-duracoes" class="btn">Salvar durações</button>
+        <p id="duracoes-feedback" class="feedback" role="status"></p>
+      </section>
+
+      <section id="dia-detalhe" class="dia-detalhe" hidden>
         <div class="dia-detalhe__topo">
           <div>
             <strong id="admin-data-label"></strong><br />
@@ -40,15 +48,74 @@
           </div>
           <button id="bloquear-dia" type="button" class="btn">Fechar este dia</button>
         </div>
+
+        <div class="horario-personalizado">
+          <h3>Horário personalizado deste dia</h3>
+          <p class="muted" id="horario-padrao-label"></p>
+          <div class="horario-personalizado__campos">
+            <div class="form__campo">
+              <label for="hora-abertura-personalizada">Abre às</label>
+              <input type="time" id="hora-abertura-personalizada" />
+            </div>
+            <div class="form__campo">
+              <label for="hora-fechamento-personalizada">Fecha às</label>
+              <input type="time" id="hora-fechamento-personalizada" />
+            </div>
+          </div>
+          <div class="horario-personalizado__botoes">
+            <button type="button" id="salvar-horario-personalizado" class="btn">Salvar horário deste dia</button>
+            <button type="button" id="usar-horario-padrao" class="btn btn--secundario">Usar horário padrão</button>
+          </div>
+        </div>
+
+        <h3>Grade de horários (clique para agendar ou bloquear)</h3>
+        <div id="admin-slots-grid" class="slots-grid"></div>
+
+        <section id="admin-slot-acao" class="dia-detalhe" hidden>
+          <p><strong id="admin-slot-selecionado-label"></strong></p>
+          <div id="admin-slot-livre-acoes">
+            <button type="button" id="bloquear-horario" class="btn btn--secundario">Bloquear este horário</button>
+            <form id="admin-booking-form" class="form">
+              <div class="form__campo">
+                <label for="admin-nome">Nome do cliente</label>
+                <input id="admin-nome" name="nome" type="text" required />
+              </div>
+              <div class="form__campo">
+                <label for="admin-telefone">Telefone</label>
+                <input id="admin-telefone" name="telefone" type="tel" required />
+              </div>
+              <div class="form__campo">
+                <label for="admin-servico">Serviço</label>
+                <select id="admin-servico" name="servico" required>
+                  <option value="" disabled selected>Selecione</option>
+                  <option value="Corte">Corte</option>
+                  <option value="Barba">Barba</option>
+                  <option value="Corte + Barba">Corte + Barba</option>
+                  <option value="Sobrancelha">Sobrancelha</option>
+                </select>
+              </div>
+              <p id="admin-feedback" class="feedback" role="status"></p>
+              <button type="submit" class="btn">Agendar cliente</button>
+            </form>
+          </div>
+          <div id="admin-slot-ocupado-acoes" hidden>
+            <p id="admin-slot-ocupado-info"></p>
+            <button type="button" id="admin-cancelar-horario" class="agendamento-card__cancelar">Cancelar agendamento</button>
+          </div>
+          <div id="admin-slot-bloqueado-acoes" hidden>
+            <button type="button" id="admin-reabrir-horario" class="btn">Reabrir este horário</button>
+          </div>
+        </section>
+
+        <h3>Agendamentos do dia</h3>
         <div id="lista-agendamentos"></div>
-      </div>
+      </section>
     </section>
 
     <footer class="rodape">
       <a href="index.html">← Voltar para agendamento</a>
     </footer>
   </div>
-
-   <script type="module" src="admin.js"></script>
+  <script type="module" src="admin.js"></script>
 </body>
 </html>

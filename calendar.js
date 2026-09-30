@@ -22,14 +22,6 @@ function startOfDay(date) {
   return d;
 }
 
-/**
- * Cria um calendário interativo dentro de `container`.
- * @param {HTMLElement} container
- * @param {Object} options
- * @param {Set<string>} options.blockedDates - chaves "YYYY-MM-DD" fechadas pelo barbeiro
- * @param {(dateKey: string) => void} options.onSelect - chamado ao clicar num dia válido
- * @param {string} [options.selectedKey] - dia atualmente selecionado
- */
 export function createCalendar(container, { blockedDates = new Set(), onSelect, selectedKey } = {}) {
   const today = startOfDay(new Date());
   let viewYear = today.getFullYear();
@@ -50,7 +42,6 @@ export function createCalendar(container, { blockedDates = new Set(), onSelect, 
     const wrap = document.createElement("div");
     wrap.className = "calendar";
 
-    // Cabeçalho: mês/ano + navegação (não deixa voltar antes do mês atual)
     const header = document.createElement("div");
     header.className = "calendar__header";
 
@@ -90,18 +81,15 @@ export function createCalendar(container, { blockedDates = new Set(), onSelect, 
     header.append(prevBtn, title, nextBtn);
     wrap.appendChild(header);
 
-    // Dias da semana
     const weekRow = document.createElement("div");
     weekRow.className = "calendar__weekdays";
-    DIAS_SEMANA.forEach((d, i) => {
+    DIAS_SEMANA.forEach((d) => {
       const el = document.createElement("span");
       el.textContent = d;
-      el.key = i;
       weekRow.appendChild(el);
     });
     wrap.appendChild(weekRow);
 
-    // Grade de dias
     const grid = document.createElement("div");
     grid.className = "calendar__grid";
 

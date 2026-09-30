@@ -19,13 +19,27 @@
       <div id="calendar"></div>
     </section>
 
+    <section id="servico-section" hidden>
+      <h2>2. Escolha o serviço — <span id="selected-date-label"></span></h2>
+      <div class="form__campo">
+        <label for="servico-select">Serviço</label>
+        <select id="servico-select" required>
+          <option value="" disabled selected>Selecione</option>
+          <option value="Corte">Corte</option>
+          <option value="Barba">Barba</option>
+          <option value="Corte + Barba">Corte + Barba</option>
+          <option value="Sobrancelha">Sobrancelha</option>
+        </select>
+      </div>
+    </section>
+
     <section id="slots-section" hidden>
-      <h2>2. Escolha o horário — <span id="selected-date-label"></span></h2>
+      <h2>3. Escolha o horário — <span id="selected-servico-label"></span></h2>
       <div id="slots-grid" class="slots-grid"></div>
     </section>
 
     <section id="form-section" hidden>
-      <h2>3. Seus dados — <span id="selected-slot-label"></span></h2>
+      <h2>4. Seus dados — <span id="selected-slot-label"></span></h2>
       <form id="booking-form" class="form">
         <div class="form__campo">
           <label for="nome">Nome</label>
@@ -34,16 +48,6 @@
         <div class="form__campo">
           <label for="telefone">Telefone / WhatsApp</label>
           <input id="telefone" name="telefone" type="tel" required autocomplete="tel" placeholder="(00) 00000-0000" />
-        </div>
-        <div class="form__campo">
-          <label for="servico">Serviço</label>
-          <select id="servico" name="servico" required>
-            <option value="" disabled selected>Selecione</option>
-            <option value="Corte">Corte</option>
-            <option value="Barba">Barba</option>
-            <option value="Corte + Barba">Corte + Barba</option>
-            <option value="Sobrancelha">Sobrancelha</option>
-          </select>
         </div>
         <p id="feedback" class="feedback"></p>
         <button type="submit" class="btn">Confirmar agendamento</button>
