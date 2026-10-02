@@ -394,6 +394,7 @@ h2 {
 
 .agendamento-card__info span {
   color: var(--texto-suave);
+  overflow-wrap: anywhere;
 }
 
 .agendamento-card__cancelar {
@@ -409,6 +410,16 @@ h2 {
 .agendamento-card__cancelar:hover {
   background: var(--vinho);
   color: var(--texto);
+}
+
+@media (max-width: 520px) {
+  .agendamento-card {
+    flex-wrap: wrap;
+  }
+
+  .agendamento-card__info {
+    min-width: calc(100% - 80px);
+  }
 }
 
 .rodape {

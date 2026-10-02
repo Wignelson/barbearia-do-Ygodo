@@ -1,6 +1,6 @@
 import { firebaseConfig, ADMIN_EMAIL } from "./firebase-config.js";
 import { createCalendar, toKey } from "./calendar.js";
-import { reservarHorarios } from "./schedule.js";
+import { reservarHorarios, ajustarDuracaoAgendamento } from "./schedule.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth,
@@ -27,6 +27,12 @@ const DURACOES_PADRAO = {
   "Barba": 30,
   "Corte + Barba": 45,
   "Sobrancelha": 15
+};
+const SERVICOS_PADRAO = {
+  corte: { nome: "Corte", duracaoMinutos: 30 },
+  barba: { nome: "Barba", duracaoMinutos: 30 },
+  corte_barba: { nome: "Corte + Barba", duracaoMinutos: 45 },
+  sobrancelha: { nome: "Sobrancelha", duracaoMinutos: 15 }
 };
 
 const app = initializeApp(firebaseConfig);
@@ -67,9 +73,12 @@ const cancelarHorarioBtn = document.getElementById("admin-cancelar-horario");
 const ocupadoInfo = document.getElementById("admin-slot-ocupado-info");
 const adminBookingForm = document.getElementById("admin-booking-form");
 const adminFeedback = document.getElementById("admin-feedback");
+const duracaoClienteForm = document.getElementById("duracao-cliente-form");
+const duracaoClienteFeedback = document.getElementById("duracao-cliente-feedback");
 
 let blockedDates = new Set();
 let duracoesServicos = { ...DURACOES_PADRAO };
+let servicos = { ...SERVICOS_PADRAO };
 let dataSelecionada = null;
 let horarioSelecionado = null;
 let agendamentosDoDia = {};
@@ -188,48 +197,116 @@ calendarEl?.addEventListener("click", (e) => {
 
 // ---- Duração de cada serviço (configuração geral) ----
 async function carregarDuracoes() {
-  const snap = await get(ref(db, "serviceDurations"));
-  if (snap.exists()) {
-    duracoesServicos = { ...DURACOES_PADRAO, ...snap.val() };
-  }
+  const [servicosSnap, duracoesSnap] = await Promise.all([
+    get(ref(db, "services")), get(ref(db, "serviceDurations"))
+  ]);
+  const duracoesAntigas = duracoesSnap.val() || {};
+  servicos = servicosSnap.exists() ? servicosSnap.val() : Object.fromEntries(
+    Object.entries(SERVICOS_PADRAO).map(([id, item]) => [id, {
+      ...item, duracaoMinutos: duracoesAntigas[item.nome] || item.duracaoMinutos
+    }])
+  );
+  duracoesServicos = Object.fromEntries(Object.values(servicos).map((item) => [item.nome, item.duracaoMinutos]));
   renderizarDuracoes();
+  renderizarServicosAgendamento();
 }
 
 function renderizarDuracoes() {
   duracoesGrid.innerHTML = "";
-  Object.keys(DURACOES_PADRAO).forEach((servico) => {
+  Object.entries(servicos).forEach(([id, servico]) => {
     const campo = document.createElement("div");
     campo.className = "form__campo";
-    const id = `duracao-${servico.replace(/\s+/g, "-").toLowerCase()}`;
     const label = document.createElement("label");
-    label.htmlFor = id;
-    label.textContent = `${servico} (minutos)`;
+    label.textContent = `${servico.nome} — duração padrão (minutos)`;
     const input = document.createElement("input");
     input.type = "number";
-    input.id = id;
     input.min = "15";
     input.step = "5";
-    input.value = String(duracoesServicos[servico] || DURACOES_PADRAO[servico]);
-    campo.append(label, input);
-    campo.dataset.servico = servico;
+    input.value = String(servico.duracaoMinutos || 30);
+    const nome = document.createElement("input");
+    nome.type = "text";
+    nome.value = servico.nome;
+    nome.setAttribute("aria-label", "Nome do serviço");
+    campo.append(label, nome, input);
+    campo.dataset.servicoId = id;
+    const remover = document.createElement("button");
+    remover.type = "button";
+    remover.className = "btn btn--secundario";
+    remover.textContent = "Remover serviço";
+    remover.addEventListener("click", async () => {
+      if (Object.keys(servicos).length <= 1) {
+        duracoesFeedback.textContent = "Mantenha pelo menos um serviço cadastrado.";
+        return;
+      }
+      const novos = { ...servicos };
+      delete novos[id];
+      await set(ref(db, "services"), novos);
+      servicos = novos;
+      duracoesServicos = Object.fromEntries(Object.values(servicos).map((item) => [item.nome, item.duracaoMinutos]));
+      renderizarDuracoes();
+      renderizarServicosAgendamento();
+      duracoesFeedback.textContent = "Serviço removido.";
+    });
+    campo.appendChild(remover);
     duracoesGrid.appendChild(campo);
+  });
+}
+
+function renderizarServicosAgendamento() {
+  const select = document.getElementById("admin-servico");
+  if (!select) return;
+  select.replaceChildren(Object.assign(document.createElement("option"), {
+    value: "", textContent: "Selecione", disabled: true, selected: true
+  }));
+  Object.entries(servicos).forEach(([id, servico]) => {
+    const option = document.createElement("option");
+    option.value = id;
+    option.textContent = servico.nome;
+    select.appendChild(option);
   });
 }
 
 salvarDuracoesBtn.addEventListener("click", async () => {
   const atualizacoes = {};
+  let invalido = false;
   duracoesGrid.querySelectorAll(".form__campo").forEach((campo) => {
-    const servico = campo.dataset.servico;
-    const input = campo.querySelector("input");
+    const id = campo.dataset.servicoId;
+    const [nome, input] = campo.querySelectorAll("input");
     const valor = Number(input.value);
-    if (valor > 0) {
-      atualizacoes[servico] = valor;
-    }
+    const nomeServico = nome.value.trim();
+    if (!nomeServico || !Number.isFinite(valor) || valor < 5) invalido = true;
+    else atualizacoes[id] = { nome: nomeServico, duracaoMinutos: valor };
   });
-  await set(ref(db, "serviceDurations"), atualizacoes);
-  duracoesServicos = { ...DURACOES_PADRAO, ...atualizacoes };
-  duracoesFeedback.textContent = "Durações salvas!";
+  if (invalido) {
+    duracoesFeedback.textContent = "Confira os nomes e informe durações de pelo menos 5 minutos.";
+    return;
+  }
+  await set(ref(db, "services"), atualizacoes);
+  servicos = atualizacoes;
+  duracoesServicos = Object.fromEntries(Object.values(servicos).map((item) => [item.nome, item.duracaoMinutos]));
+  renderizarDuracoes();
+  renderizarServicosAgendamento();
+  duracoesFeedback.textContent = "Serviços e durações padrão salvos!";
   setTimeout(() => (duracoesFeedback.textContent = ""), 2500);
+});
+
+document.getElementById("novo-servico-form")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const nome = e.currentTarget.nome.value.trim();
+  const duracaoMinutos = Number(e.currentTarget.duracao.value);
+  if (!nome || !Number.isFinite(duracaoMinutos) || duracaoMinutos < 5) return;
+  const base = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+  const prefixo = base || "servico";
+  let id = prefixo;
+  let sufixo = 2;
+  while (servicos[id]) id = `${prefixo}_${sufixo++}`;
+  servicos = { ...servicos, [id]: { nome, duracaoMinutos } };
+  await set(ref(db, "services"), servicos);
+  duracoesServicos[nome] = duracaoMinutos;
+  renderizarDuracoes();
+  renderizarServicosAgendamento();
+  e.currentTarget.reset();
+  duracoesFeedback.textContent = "Novo serviço adicionado.";
 });
 
 function selecionarDia(dateKey) {
@@ -371,6 +448,8 @@ function selecionarHorario(horario, { ocupado, bloqueado }) {
       const item = completo.dados;
       ocupadoInfo.textContent =
         `${item.nome} — ${item.telefone} — ${item.servico} (${item.duracaoMinutos || 30} min, começa às ${completo.horarioPrincipal})`;
+      duracaoClienteForm.duracao.value = String(item.duracaoMinutos || 30);
+      duracaoClienteFeedback.textContent = "";
     }
     slotOcupadoAcoes.hidden = false;
   } else if (bloqueado) {
@@ -420,14 +499,15 @@ adminBookingForm.addEventListener("submit", async (e) => {
 
   const nome = adminBookingForm.nome.value.trim();
   const telefone = adminBookingForm.telefone.value.trim();
-  const servico = adminBookingForm.servico.value;
+  const servicoId = adminBookingForm.servico.value;
+  const servico = servicos[servicoId];
 
   if (!nome || !telefone || !servico) {
     adminFeedback.textContent = "Preencha todos os campos.";
     return;
   }
 
-  const duracaoMinutos = duracoesServicos[servico] || 30;
+  const duracaoMinutos = servico.duracaoMinutos || 30;
   const unidadesNecessarias = Math.max(1, Math.ceil(duracaoMinutos / TAMANHO_GRADE_MINUTOS));
   const indiceInicial = horariosDoDiaAtual.indexOf(horarioSelecionado);
 
@@ -440,7 +520,8 @@ adminBookingForm.addEventListener("submit", async (e) => {
   const dados = {
     nome,
     telefone,
-    servico,
+    servico: servico.nome,
+    servicoId,
     duracaoMinutos,
     criadoEm: Date.now()
   };
@@ -455,6 +536,44 @@ adminBookingForm.addEventListener("submit", async (e) => {
 
   slotAcaoSection.hidden = true;
   carregarGradeDoDia(dataSelecionada);
+});
+
+duracaoClienteForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!dataSelecionada || !horarioSelecionado) return;
+  const completo = obterAgendamentoCompleto(horarioSelecionado);
+  if (!completo) return;
+  const duracaoMinutos = Number(duracaoClienteForm.duracao.value);
+  if (!Number.isFinite(duracaoMinutos) || duracaoMinutos < 5) {
+    duracaoClienteFeedback.textContent = "Informe uma duração válida.";
+    return;
+  }
+  const unidadesNecessarias = Math.max(1, Math.ceil(duracaoMinutos / TAMANHO_GRADE_MINUTOS));
+  const indiceInicial = horariosDoDiaAtual.indexOf(completo.horarioPrincipal);
+  if (indiceInicial < 0 || indiceInicial + unidadesNecessarias > horariosDoDiaAtual.length) {
+    duracaoClienteFeedback.textContent = "A duração ultrapassa o horário de fechamento deste dia.";
+    return;
+  }
+  const janela = horariosDoDiaAtual.slice(indiceInicial, indiceInicial + unidadesNecessarias);
+  duracaoClienteForm.querySelector("button[type=submit]").disabled = true;
+  try {
+    const resultado = await ajustarDuracaoAgendamento(
+      db, dataSelecionada, completo.horarioPrincipal, janela, duracaoMinutos
+    );
+    if (!resultado.atualizado) {
+      duracaoClienteFeedback.textContent = mensagemFalhaDuracao(resultado.motivo);
+      await carregarGradeDoDia(dataSelecionada);
+      return;
+    }
+    await carregarGradeDoDia(dataSelecionada);
+    selecionarHorario(completo.horarioPrincipal, { ocupado: true, bloqueado: false });
+    duracaoClienteFeedback.textContent = "Duração deste cliente atualizada e horários ajustados.";
+  } catch (error) {
+    console.error(error);
+    duracaoClienteFeedback.textContent = "Não foi possível atualizar agora. Tente novamente.";
+  } finally {
+    duracaoClienteForm.querySelector("button[type=submit]").disabled = false;
+  }
 });
 
 // ---- Lista de agendamentos do dia (leitura rápida + cancelar) ----
@@ -503,4 +622,18 @@ function renderizarListaAgendamentos(dateKey) {
     card.appendChild(cancelarBtn);
     listaAgendamentos.appendChild(card);
   });
+}
+
+function mensagemFalhaDuracao(motivo) {
+  if (motivo === "bloqueado") {
+    return "O horário adicional está bloqueado. Reabra esse horário antes de aumentar a duração.";
+  }
+  if (motivo?.startsWith("ocupado:")) {
+    const horario = motivo.slice("ocupado:".length);
+    return `Não foi salvo: ${horario} já está reservado para outro atendimento. Ajuste a duração ou resolva a reserva seguinte.`;
+  }
+  if (motivo === "nao-encontrado") {
+    return "Não encontrei esse agendamento no banco de horários. Atualize o painel e tente novamente.";
+  }
+  return "Não foi possível salvar a duração. Atualize o painel e tente novamente.";
 }

@@ -45,7 +45,12 @@ Depois abra `http://localhost:8000` no navegador. O painel fica em `http://local
 - O calendário não permite escolher datas passadas.
 - O cliente escolhe data, serviço, horário e informa nome e telefone.
 - Os horários ocupados são gravados numa transação por dia para rejeitar reservas concorrentes no mesmo bloco.
-- O barbeiro pode fechar dias, bloquear horários, definir horários especiais, ajustar durações, criar reservas e cancelar agendamentos.
+- O barbeiro pode fechar dias, bloquear horários, definir horários especiais, cadastrar/editar/remover serviços e definir a duração padrão de cada serviço.
+- No painel, também pode ajustar a duração de um atendimento específico. A grade reserva ou libera blocos de 30 minutos, impede sobreposições e atualiza em tempo real o relógio público quando um atendimento muda.
 - O login do painel usa Firebase Authentication.
+
+### Notificações por WhatsApp
+
+O site ainda precisa ser conectado a um provedor oficial de WhatsApp e a um backend para enviar confirmações e lembretes automaticamente. Não coloque tokens do WhatsApp no JavaScript público. O lembrete no dia do atendimento também precisa de uma tarefa agendada no backend.
 
 O app é de uma barbearia/cadeira. As durações, horários padrão e regras de funcionamento estão nos arquivos JavaScript.

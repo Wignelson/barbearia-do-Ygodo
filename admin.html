@@ -34,9 +34,21 @@
       <div id="admin-calendar"></div>
 
       <section class="horario-personalizado">
-        <h3>Duração de cada serviço</h3>
+        <h3>Serviços e durações padrão</h3>
         <div id="duracoes-grid" class="horario-personalizado__campos"></div>
         <button type="button" id="salvar-duracoes" class="btn">Salvar durações</button>
+        <form id="novo-servico-form" class="form">
+          <h3>Adicionar serviço</h3>
+          <div class="form__campo">
+            <label for="novo-servico-nome">Nome do serviço</label>
+            <input id="novo-servico-nome" name="nome" type="text" required />
+          </div>
+          <div class="form__campo">
+            <label for="novo-servico-duracao">Duração padrão (minutos)</label>
+            <input id="novo-servico-duracao" name="duracao" type="number" min="5" step="5" value="30" required />
+          </div>
+          <button type="submit" class="btn">Adicionar serviço</button>
+        </form>
         <p id="duracoes-feedback" class="feedback" role="status"></p>
       </section>
 
@@ -100,6 +112,14 @@
           </div>
           <div id="admin-slot-ocupado-acoes" hidden>
             <p id="admin-slot-ocupado-info"></p>
+            <form id="duracao-cliente-form" class="form">
+              <div class="form__campo">
+                <label for="duracao-cliente">Duração deste atendimento (minutos)</label>
+                <input id="duracao-cliente" name="duracao" type="number" min="5" step="5" required />
+              </div>
+              <p id="duracao-cliente-feedback" class="feedback" role="status"></p>
+              <button type="submit" class="btn">Atualizar duração do cliente</button>
+            </form>
             <button type="button" id="admin-cancelar-horario" class="agendamento-card__cancelar">Cancelar agendamento</button>
           </div>
           <div id="admin-slot-bloqueado-acoes" hidden>
