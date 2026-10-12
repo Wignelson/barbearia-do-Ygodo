@@ -1,4 +1,4 @@
-import { get, ref, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { get, ref, runTransaction, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 // Reserva todos os blocos de um serviço numa única transação por dia.
 // A transação é repetida pelo Firebase se outra reserva alterar o mesmo dia.
@@ -31,6 +31,11 @@ export async function reservarHorarios(db, dateKey, horarioPrincipal, horarios, 
     { applyLocally: false }
   );
 
+  if (resultado.committed) {
+    const ocupacao = {};
+    horarios.forEach((horario) => { ocupacao[`bookedSlots/${dateKey}/${horario}`] = true; });
+    await update(ref(db), ocupacao);
+  }
   return { reservado: resultado.committed, motivo: resultado.committed ? null : "ocupado" };
 }
 
@@ -50,6 +55,7 @@ export async function ajustarDuracaoAgendamento(db, dateKey, horarioPrincipal, h
 
   let motivoAbortamento = null;
   let atualizacaoAplicada = false;
+  let horariosAntigosAtualizacao = [];
   const resultado = await runTransaction(agendaRef, (agendaAtual) => {
     motivoAbortamento = null;
     atualizacaoAplicada = false;
@@ -62,6 +68,7 @@ export async function ajustarDuracaoAgendamento(db, dateKey, horarioPrincipal, h
       return agendaAtual;
     }
     const horariosAntigos = agendamento.horarios || [horarioPrincipal];
+    horariosAntigosAtualizacao = horariosAntigos;
     const antigos = new Set(horariosAntigos);
     const conflito = horarios.find((horario) => agenda[horario] && !antigos.has(horario));
     if (conflito) {
@@ -78,6 +85,13 @@ export async function ajustarDuracaoAgendamento(db, dateKey, horarioPrincipal, h
     atualizacaoAplicada = true;
     return novaAgenda;
   }, { applyLocally: false });
+
+  if (resultado.committed && atualizacaoAplicada) {
+    const ocupacao = {};
+    horariosAntigosAtualizacao.forEach((horario) => { ocupacao[`bookedSlots/${dateKey}/${horario}`] = null; });
+    horarios.forEach((horario) => { ocupacao[`bookedSlots/${dateKey}/${horario}`] = true; });
+    await update(ref(db), ocupacao);
+  }
 
   return {
     atualizado: resultado.committed && atualizacaoAplicada,

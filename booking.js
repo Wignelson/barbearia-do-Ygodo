@@ -1,29 +1,14 @@
 import { firebaseConfig } from "./firebase-config.js";
 import { createCalendar, toKey } from "./calendar.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import {
-  getDatabase,
-  ref,
-  get,
-  onValue
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-import { reservarHorarios } from "./schedule.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getDatabase, ref, get, onValue, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// ---- Configuração padrão do funcionamento da barbearia ----
-const HORA_ABERTURA = 10; // 10h
-const HORA_FECHAMENTO = 21; // 21h
-const TAMANHO_GRADE_MINUTOS = 30; // granularidade da grade de horários
-
-// Duração padrão de cada serviço, em minutos (o barbeiro pode
-// sobrescrever isso no painel dele, em "Duração de cada serviço")
-const SERVICOS_PADRAO = {
-  corte: { nome: "Corte", duracaoMinutos: 30 },
-  barba: { nome: "Barba", duracaoMinutos: 30 },
-  corte_barba: { nome: "Corte + Barba", duracaoMinutos: 45 },
-  sobrancelha: { nome: "Sobrancelha", duracaoMinutos: 15 }
-};
-
+const SLOT_MINUTES = 30;
+const OPEN_DEFAULT = "10:00";
+const CLOSE_DEFAULT = "21:00";
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getDatabase(app);
 
 const calendarEl = document.getElementById("calendar");
@@ -40,13 +25,21 @@ const feedbackEl = document.getElementById("feedback");
 const successSection = document.getElementById("success-section");
 
 let blockedDates = new Set();
-let servicos = { ...SERVICOS_PADRAO };
+let servicos = {};
 let selectedDateKey = null;
 let selectedServico = null;
 let selectedSlot = null;
-let selectedHorariosList = [];
-let horariosDoDiaAtual = [];
-let pararEscutaAgendamentos = null;
+let refreshTimer = null;
+let availabilityRequest = 0;
+let stopBookedListener = null;
+let stopBlockedListener = null;
+
+function formatarDataExtenso(key) {
+  const [ano, mes, dia] = key.split("-").map(Number);
+  return new Date(ano, mes - 1, dia).toLocaleDateString("pt-BR", {
+    weekday: "long", day: "2-digit", month: "long"
+  });
+}
 
 function paraMinutos(hhmm) {
   const [h, m] = hhmm.split(":").map(Number);
@@ -54,33 +47,16 @@ function paraMinutos(hhmm) {
 }
 
 function paraHHMM(minutos) {
-  const h = String(Math.floor(minutos / 60)).padStart(2, "0");
-  const m = String(minutos % 60).padStart(2, "0");
-  return `${h}:${m}`;
+  return `${String(Math.floor(minutos / 60)).padStart(2, "0")}:${String(minutos % 60).padStart(2, "0")}`;
 }
 
-function gerarGradeHorarios(minutoInicio, minutoFim) {
+function gerarGradeHorarios(inicio, fim) {
   const horarios = [];
-  let atual = minutoInicio;
-  while (atual < minutoFim) {
-    horarios.push(paraHHMM(atual));
-    atual += TAMANHO_GRADE_MINUTOS;
-  }
+  for (let minuto = inicio; minuto < fim; minuto += SLOT_MINUTES) horarios.push(paraHHMM(minuto));
   return horarios;
 }
 
-function formatarDataExtenso(key) {
-  const [ano, mes, dia] = key.split("-").map(Number);
-  const data = new Date(ano, mes - 1, dia);
-  return data.toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long"
-  });
-}
-
 function renderizarServicos() {
-  const selecionado = servicoSelect.value;
   servicoSelect.replaceChildren(Object.assign(document.createElement("option"), {
     value: "", textContent: "Selecione", disabled: true, selected: true
   }));
@@ -90,36 +66,66 @@ function renderizarServicos() {
     option.textContent = servico.nome;
     servicoSelect.appendChild(option);
   });
-  if (servicos[selecionado]) servicoSelect.value = selecionado;
+  servicoSelect.disabled = Object.keys(servicos).length === 0;
 }
 
-onValue(ref(db, "services"), (snap) => {
-  servicos = snap.exists() ? snap.val() : { ...SERVICOS_PADRAO };
-  renderizarServicos();
-});
+function mostrarErroDeCarregamento() {
+  slotsGrid.replaceChildren();
+  const aviso = document.createElement("p");
+  aviso.className = "muted";
+  aviso.textContent = "Não foi possível carregar os horários agora. Atualize a página ou tente novamente mais tarde.";
+  slotsGrid.appendChild(aviso);
+}
 
-// Escuta em tempo real os dias fechados pelo barbeiro
-onValue(ref(db, "blockedDates"), (snap) => {
-  const val = snap.val() || {};
-  blockedDates = new Set(Object.keys(val).filter((k) => val[k]));
-  calendar.refreshBlockedDates(blockedDates);
-});
+async function garantirAcessoAnonimo() {
+  if (!auth.currentUser) await signInAnonymously(auth);
+}
+
+async function carregarConfiguracaoPublica() {
+  try {
+    await garantirAcessoAnonimo();
+    const [servicesSnap, blockedSnap] = await Promise.all([
+      get(ref(db, "services")),
+      get(ref(db, "blockedDates"))
+    ]);
+    servicos = servicesSnap.val() || {
+      corte: { nome: "Corte", duracaoMinutos: 30 },
+      barba: { nome: "Barba", duracaoMinutos: 30 },
+      corte_barba: { nome: "Corte + Barba", duracaoMinutos: 45 },
+      sobrancelha: { nome: "Sobrancelha", duracaoMinutos: 15 }
+    };
+    const fechados = blockedSnap.val() || {};
+    blockedDates = new Set(Object.keys(fechados).filter((key) => fechados[key] === true));
+    calendar.refreshBlockedDates(blockedDates);
+    renderizarServicos();
+  } catch (error) {
+    console.error(error);
+    servicoSelect.disabled = true;
+    const aviso = document.createElement("p");
+    aviso.className = "feedback";
+    aviso.setAttribute("role", "alert");
+    aviso.textContent = "Não foi possível conectar ao sistema de agendamento. Tente novamente mais tarde.";
+    servicoSection.appendChild(aviso);
+  }
+}
 
 const calendar = createCalendar(calendarEl, {
   blockedDates,
   onSelect: (dateKey) => {
-    pararEscutaAgendamentos?.();
-    pararEscutaAgendamentos = null;
+    stopBookedListener?.();
+    stopBlockedListener?.();
+    stopBookedListener = null;
+    stopBlockedListener = null;
     selectedDateKey = dateKey;
     selectedServico = null;
     selectedSlot = null;
-    selectedHorariosList = [];
     servicoSelect.value = "";
     slotsSection.hidden = true;
     formSection.hidden = true;
     successSection.hidden = true;
     selectedDateLabel.textContent = formatarDataExtenso(dateKey);
     servicoSection.hidden = false;
+    if (refreshTimer) clearInterval(refreshTimer);
   }
 });
 
@@ -127,181 +133,181 @@ servicoSelect.addEventListener("change", () => {
   selectedServico = servicoSelect.value;
   if (!selectedServico || !selectedDateKey) return;
   selectedSlot = null;
-  selectedHorariosList = [];
   formSection.hidden = true;
   successSection.hidden = true;
+  feedbackEl.textContent = "";
   selectedServicoLabel.textContent = servicos[selectedServico]?.nome || selectedServico;
   slotsSection.hidden = false;
-  carregarHorarios(selectedDateKey, selectedServico);
+  carregarHorarios();
+  stopBookedListener?.();
+  stopBlockedListener?.();
+  let primeiraLeituraOcupados = true;
+  let primeiraLeituraBloqueados = true;
+  stopBookedListener = onValue(ref(db, `bookedSlots/${selectedDateKey}`), () => {
+    if (primeiraLeituraOcupados) { primeiraLeituraOcupados = false; return; }
+    if (selectedDateKey && selectedServico) carregarHorarios();
+  });
+  stopBlockedListener = onValue(ref(db, `blockedSlots/${selectedDateKey}`), () => {
+    if (primeiraLeituraBloqueados) { primeiraLeituraBloqueados = false; return; }
+    if (selectedDateKey && selectedServico) carregarHorarios();
+  });
+  if (refreshTimer) clearInterval(refreshTimer);
+  refreshTimer = setInterval(() => {
+    if (selectedDateKey && selectedServico && formSection.hidden && successSection.hidden) carregarHorarios();
+  }, 20000);
 });
 
-async function carregarHorarios(dateKey, servico, escutarAtualizacoes = true) {
-  slotsGrid.innerHTML = "<p class='muted'>Carregando horários...</p>";
-
-  const duracaoMinutos = servicos[servico]?.duracaoMinutos || 30;
-  const unidadesNecessarias = Math.max(1, Math.ceil(duracaoMinutos / TAMANHO_GRADE_MINUTOS));
-
-  const [customSnap, agendamentosSnap, bloqueadosSnap] = await Promise.all([
+async function obterDisponibilidade(dateKey, serviceId) {
+  const [hoursSnap, bookedSnap, blockedSnap, closedSnap] = await Promise.all([
     get(ref(db, `customHours/${dateKey}`)),
-    get(ref(db, `appointments/${dateKey}`)),
-    get(ref(db, `blockedSlots/${dateKey}`))
+    get(ref(db, `bookedSlots/${dateKey}`)),
+    get(ref(db, `blockedSlots/${dateKey}`)),
+    get(ref(db, `blockedDates/${dateKey}`))
   ]);
-
-  let inicio = HORA_ABERTURA * 60;
-  let fim = HORA_FECHAMENTO * 60;
-  if (customSnap.exists()) {
-    const custom = customSnap.val();
-    inicio = paraMinutos(custom.abertura);
-    fim = paraMinutos(custom.fechamento);
-  }
-
-  const horariosDoDia = gerarGradeHorarios(inicio, fim);
-  horariosDoDiaAtual = horariosDoDia;
-  const ocupados = agendamentosSnap.exists() ? agendamentosSnap.val() : {};
-  const bloqueados = bloqueadosSnap.exists() ? bloqueadosSnap.val() : {};
-
-  slotsGrid.innerHTML = "";
-
-  if (horariosDoDia.length === 0) {
-    slotsGrid.innerHTML = "<p class='muted'>Nenhum horário disponível neste dia.</p>";
-    return;
-  }
-
-  const agora = new Date();
-  const ehHoje = dateKey === toKey(agora);
-  let algumDisponivel = false;
-
-  horariosDoDia.forEach((horario, indice) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "slot";
-    btn.textContent = horario;
-
-    // verifica se há espaço consecutivo suficiente a partir daqui,
-    // e se o horário de término real cabe antes do fechamento
-    let cabeAqui =
-      indice + unidadesNecessarias <= horariosDoDia.length &&
-      paraMinutos(horario) + duracaoMinutos <= fim;
-    const janela = [];
-    if (cabeAqui) {
-      for (let i = 0; i < unidadesNecessarias; i++) {
-        const h = horariosDoDia[indice + i];
-        janela.push(h);
-        if (ocupados[h] || bloqueados[h]) {
-          cabeAqui = false;
-        }
-      }
-    }
-
-    let jaPassou = false;
+  const hours = hoursSnap.val() || {};
+  const openAt = paraMinutos(hours.abertura || OPEN_DEFAULT);
+  const closeAt = paraMinutos(hours.fechamento || CLOSE_DEFAULT);
+  const service = servicos[serviceId];
+  const duration = Number(service?.duracaoMinutos || 30);
+  const times = gerarGradeHorarios(openAt, closeAt);
+  const booked = bookedSnap.val() || {};
+  const blocked = blockedSnap.val() || {};
+  const now = new Date();
+  const ehHoje = dateKey === toKey(now);
+  const requiredSlots = Math.max(1, Math.ceil(duration / SLOT_MINUTES));
+  const slots = times.map((time, index) => {
+    const window = times.slice(index, index + requiredSlots);
+    let available = closedSnap.val() !== true
+      && window.length === requiredSlots
+      && paraMinutos(time) + duration <= closeAt
+      && !window.some((slot) => booked[slot] === true || blocked[slot] === true);
     if (ehHoje) {
-      const [h, m] = horario.split(":").map(Number);
-      const horarioSlot = new Date();
-      horarioSlot.setHours(h, m, 0, 0);
-      jaPassou = horarioSlot <= agora;
+      const [hour, minute] = time.split(":").map(Number);
+      const start = new Date();
+      start.setHours(hour, minute, 0, 0);
+      if (start <= now) available = false;
     }
-
-    if (!cabeAqui || jaPassou) {
-      btn.disabled = true;
-      btn.classList.add("is-disabled");
-    } else {
-      algumDisponivel = true;
-      btn.addEventListener("click", () => {
-        selectedSlot = horario;
-        selectedHorariosList = janela;
-        document
-          .querySelectorAll(".slot.is-selected")
-          .forEach((el) => el.classList.remove("is-selected"));
-        btn.classList.add("is-selected");
-        selectedSlotLabel.textContent = horario;
-        formSection.hidden = false;
-        successSection.hidden = true;
-        formSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    }
-
-    slotsGrid.appendChild(btn);
+    return { time, available };
   });
+  return { closed: closedSnap.val() === true, duration, slots };
+}
 
-  // Mantém o relógio do cliente atualizado se o barbeiro alterar a duração
-  // de um atendimento enquanto a página de agendamento estiver aberta.
-  if (escutarAtualizacoes) {
-    pararEscutaAgendamentos?.();
-    let primeiraLeitura = true;
-    pararEscutaAgendamentos = onValue(ref(db, `appointments/${dateKey}`), () => {
-      if (primeiraLeitura) {
-        primeiraLeitura = false;
-        return;
+async function carregarHorarios() {
+  if (!selectedDateKey || !selectedServico) return;
+  const requestId = ++availabilityRequest;
+  slotsGrid.innerHTML = "<p class='muted'>Carregando horários...</p>";
+  try {
+    const data = await obterDisponibilidade(selectedDateKey, selectedServico);
+    if (requestId !== availabilityRequest) return;
+    slotsGrid.replaceChildren();
+    if (data.closed) {
+      const aviso = document.createElement("p");
+      aviso.className = "muted";
+      aviso.textContent = "O barbeiro fechou este dia. Escolha outra data.";
+      slotsGrid.appendChild(aviso);
+      return;
+    }
+    let algumDisponivel = false;
+    data.slots.forEach(({ time, available }) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "slot";
+      btn.textContent = time;
+      if (!available) {
+        btn.disabled = true;
+        btn.classList.add("is-disabled");
+      } else {
+        algumDisponivel = true;
+        btn.addEventListener("click", () => {
+          selectedSlot = time;
+          document.querySelectorAll(".slot.is-selected").forEach((el) => el.classList.remove("is-selected"));
+          btn.classList.add("is-selected");
+          selectedSlotLabel.textContent = time;
+          feedbackEl.textContent = "";
+          formSection.hidden = false;
+          successSection.hidden = true;
+          if (refreshTimer) clearInterval(refreshTimer);
+          formSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
       }
-      if (selectedDateKey === dateKey && selectedServico === servico) {
-        carregarHorarios(dateKey, servico, false).catch(console.error);
-      }
+      slotsGrid.appendChild(btn);
     });
-  }
-
-  if (!algumDisponivel) {
-    const aviso = document.createElement("p");
-    aviso.className = "muted";
-    aviso.textContent = `Não há espaço de ${duracaoMinutos} min disponível neste dia para este serviço.`;
-    slotsGrid.appendChild(aviso);
+    if (!algumDisponivel) {
+      const aviso = document.createElement("p");
+      aviso.className = "muted";
+      aviso.textContent = `Não há espaço de ${data.duration} min disponível neste dia para este serviço.`;
+      slotsGrid.appendChild(aviso);
+    }
+  } catch (error) {
+    console.error(error);
+    if (requestId === availabilityRequest) mostrarErroDeCarregamento();
   }
 }
 
 bookingForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   feedbackEl.textContent = "";
-
-  if (!selectedDateKey || !selectedServico || !selectedSlot || selectedHorariosList.length === 0) {
+  if (!selectedDateKey || !selectedServico || !selectedSlot) {
     feedbackEl.textContent = "Escolha o serviço, a data e o horário antes de confirmar.";
     return;
   }
-
   const nome = bookingForm.nome.value.trim();
   const telefone = bookingForm.telefone.value.trim();
-
-  if (!nome || !telefone) {
-    feedbackEl.textContent = "Preencha todos os campos.";
+  if (nome.length < 2 || telefone.replace(/\D/g, "").length < 8) {
+    feedbackEl.textContent = "Informe um nome e telefone válidos.";
     return;
   }
-
   const submitBtn = bookingForm.querySelector("button[type=submit]");
   submitBtn.disabled = true;
   submitBtn.textContent = "Agendando...";
-
   try {
-    const resultado = await reservarHorarios(db, selectedDateKey, selectedSlot, selectedHorariosList, {
-      nome,
-      telefone,
-      servico: servicos[selectedServico]?.nome || selectedServico,
-      servicoId: selectedServico,
-      duracaoMinutos: servicos[selectedServico]?.duracaoMinutos || 30,
-      criadoEm: Date.now()
-    });
+    await garantirAcessoAnonimo();
+    const data = await obterDisponibilidade(selectedDateKey, selectedServico);
+    const chosen = data.slots.find((slot) => slot.time === selectedSlot);
+    if (!chosen?.available) throw new Error("slot-occupied");
+    const service = servicos[selectedServico];
+    const duration = Number(service?.duracaoMinutos || 30);
+    const window = gerarGradeHorarios(
+      paraMinutos(data.slots[0]?.time || OPEN_DEFAULT),
+      paraMinutos(data.slots[data.slots.length - 1]?.time || CLOSE_DEFAULT) + SLOT_MINUTES
+    );
+    const startIndex = window.indexOf(selectedSlot);
+    const count = Math.max(1, Math.ceil(duration / SLOT_MINUTES));
+    const occupiedTimes = window.slice(startIndex, startIndex + count);
+    if (startIndex < 0 || occupiedTimes.length !== count) throw new Error("slot-occupied");
 
-    if (!resultado.reservado) {
-      feedbackEl.textContent = resultado.motivo === "dia-fechado"
-        ? "O barbeiro fechou este dia. Escolha outra data."
-        : resultado.motivo === "bloqueado"
-          ? "Esse horário foi bloqueado pelo barbeiro. Escolha outro."
-          : "Ih, algum desses horários acabou de ser reservado por outra pessoa. Escolha outro.";
-      await carregarHorarios(selectedDateKey, selectedServico);
-      formSection.hidden = true;
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Confirmar agendamento";
-      return;
-    }
+    const writes = {};
+    writes[`appointments/${selectedDateKey}/${selectedSlot}`] = {
+      nome: nome.slice(0, 100),
+      telefone: telefone.slice(0, 30),
+      servico: service.nome,
+      servicoId: selectedServico,
+      duracaoMinutos: duration,
+      criadoEm: Date.now(),
+      horarios: occupiedTimes
+    };
+    occupiedTimes.forEach((time, index) => {
+      writes[`bookedSlots/${selectedDateKey}/${time}`] = true;
+      if (index > 0) writes[`appointments/${selectedDateKey}/${time}`] = { principal: selectedSlot };
+    });
+    await update(ref(db), writes);
 
     formSection.hidden = true;
     slotsSection.hidden = true;
     servicoSection.hidden = true;
     successSection.hidden = false;
     successSection.querySelector(".success__details").textContent =
-      `${servicos[selectedServico]?.nome || selectedServico} — ${formatarDataExtenso(selectedDateKey)} às ${selectedSlot}`;
+      `${service.nome} — ${formatarDataExtenso(selectedDateKey)} às ${selectedSlot}`;
     bookingForm.reset();
-  } catch (err) {
-    console.error(err);
-    feedbackEl.textContent =
-      "Não deu pra agendar agora. Verifique sua conexão e tente de novo.";
+  } catch (error) {
+    console.error(error);
+    const conflito = error.message === "slot-occupied" || error.code === "PERMISSION_DENIED" || error.code === "database/permission-denied";
+    feedbackEl.textContent = conflito
+      ? "Esse horário acabou de ser reservado. Escolha outro."
+      : "Não foi possível concluir o agendamento. Confira a conexão e tente novamente.";
+    selectedSlot = null;
+    selectedSlotLabel.textContent = "Escolha outro horário";
+    await carregarHorarios();
   } finally {
     submitBtn.disabled = false;
     submitBtn.textContent = "Confirmar agendamento";
@@ -309,8 +315,17 @@ bookingForm.addEventListener("submit", async (e) => {
 });
 
 document.getElementById("novo-agendamento")?.addEventListener("click", () => {
+  stopBookedListener?.();
+  stopBlockedListener?.();
+  stopBookedListener = null;
+  stopBlockedListener = null;
   successSection.hidden = true;
   slotsSection.hidden = true;
   servicoSection.hidden = true;
   formSection.hidden = true;
+  selectedSlot = null;
+  servicoSelect.value = "";
+  if (refreshTimer) clearInterval(refreshTimer);
 });
+
+carregarConfiguracaoPublica();

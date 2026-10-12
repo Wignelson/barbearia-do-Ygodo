@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Barbearia — Painel do barbeiro</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Barbearia" />
+  <meta name="theme-color" content="#15120f" />
   <link rel="stylesheet" href="style.css" />
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
 </head>
@@ -30,6 +34,14 @@
 
     <section id="painel-section" hidden>
       <button id="sair-painel" type="button" class="btn btn--secundario">Sair</button>
+      <section class="admin-alertas" aria-labelledby="admin-alertas-titulo">
+        <div>
+          <h2 id="admin-alertas-titulo">Avisos de agendamento</h2>
+          <p id="admin-alertas-status" class="muted" role="status">Os agendamentos funcionam no plano Spark. Avisos push com o painel fechado serão configurados em uma etapa separada.</p>
+        </div>
+        <button id="ativar-alertas" type="button" class="btn btn--secundario">Sobre notificações push</button>
+      </section>
+      <div id="admin-notificacoes" class="admin-notificacoes" aria-live="polite"></div>
       <h2>Selecione um dia</h2>
       <div id="admin-calendar"></div>
 

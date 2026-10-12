@@ -1,0 +1,10 @@
+{
+  "name": "Barbearia do Ygodo — Painel",
+  "short_name": "Barbearia",
+  "start_url": "./admin.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#15120f",
+  "theme_color": "#15120f",
+  "lang": "pt-BR"
+}

@@ -44,6 +44,9 @@ const painelSection = document.getElementById("painel-section");
 const loginForm = document.getElementById("login-form");
 const loginErro = document.getElementById("login-erro");
 const sairBtn = document.getElementById("sair-painel");
+const ativarAlertasBtn = document.getElementById("ativar-alertas");
+const alertasStatus = document.getElementById("admin-alertas-status");
+const notificacoesEl = document.getElementById("admin-notificacoes");
 
 const duracoesGrid = document.getElementById("duracoes-grid");
 const salvarDuracoesBtn = document.getElementById("salvar-duracoes");
@@ -84,6 +87,12 @@ let horarioSelecionado = null;
 let agendamentosDoDia = {};
 let bloqueadosDoDia = {};
 let horariosDoDiaAtual = [];
+let pararEscutaAgendamentos = null;
+let idsAgendamentosConhecidos = new Set();
+
+ativarAlertasBtn.addEventListener("click", () => {
+  alertasStatus.textContent = "Os agendamentos funcionam no plano Spark. As notificações push com o painel fechado serão configuradas em uma etapa separada.";
+});
 
 function formatarDataExtenso(key) {
   const [ano, mes, dia] = key.split("-").map(Number);
@@ -133,6 +142,8 @@ onAuthStateChanged(auth, (usuario) => {
   if (usuario) {
     if (painelSection.hidden) entrarNoPainel();
   } else {
+    pararEscutaAgendamentos?.();
+    pararEscutaAgendamentos = null;
     loginSection.hidden = false;
     painelSection.hidden = true;
   }
@@ -165,6 +176,11 @@ function entrarNoPainel() {
 let calendar;
 function iniciarPainel() {
   carregarDuracoes();
+  iniciarAvisosAgendamentos();
+  sincronizarOcupacaoPublica().catch((error) => {
+    console.error(error);
+    adminFeedback.textContent = "Não foi possível sincronizar os horários ocupados. Atualize o painel e tente novamente.";
+  });
 
   onValue(ref(db, "blockedDates"), (snap) => {
     const val = snap.val() || {};
@@ -177,6 +193,61 @@ function iniciarPainel() {
     blockedDates,
     onSelect: (dateKey) => selecionarDia(dateKey)
   });
+}
+
+// Publica apenas os horários ocupados, sem nome ou telefone, para a agenda do cliente.
+async function sincronizarOcupacaoPublica() {
+  const snapshot = await get(ref(db, "appointments"));
+  const ocupacoes = {};
+  Object.entries(snapshot.val() || {}).forEach(([dateKey, agenda]) => {
+    Object.entries(agenda || {}).forEach(([horario, item]) => {
+      if (item) ocupacoes[`bookedSlots/${dateKey}/${horario}`] = true;
+    });
+  });
+  if (Object.keys(ocupacoes).length) await update(ref(db), ocupacoes);
+}
+
+function iniciarAvisosAgendamentos() {
+  pararEscutaAgendamentos?.();
+  idsAgendamentosConhecidos = new Set();
+  let primeiraLeitura = true;
+  pararEscutaAgendamentos = onValue(ref(db, "appointments"), (snap) => {
+    const todos = snap.val() || {};
+    const atuais = new Map();
+    Object.entries(todos).forEach(([data, agenda]) => {
+      Object.entries(agenda || {}).forEach(([horario, item]) => {
+        if (!item || item.principal || !item.nome) return;
+        const id = `${data}/${horario}/${item.criadoEm || ""}`;
+        atuais.set(id, { data, horario, item });
+      });
+    });
+
+    if (primeiraLeitura) {
+      primeiraLeitura = false;
+      idsAgendamentosConhecidos = new Set(atuais.keys());
+      return;
+    }
+
+    atuais.forEach(({ data, horario, item }, id) => {
+      if (!idsAgendamentosConhecidos.has(id)) mostrarAvisoAgendamento(data, horario, item);
+    });
+    idsAgendamentosConhecidos = new Set(atuais.keys());
+  }, (error) => {
+    console.error(error);
+    alertasStatus.textContent = "Não foi possível acompanhar novos agendamentos. Confira o acesso do painel ao Firebase.";
+  });
+}
+
+function mostrarAvisoAgendamento(data, horario, item) {
+  const [ano, mes, dia] = data.split("-").map(Number);
+  const dataCurta = new Date(ano, mes - 1, dia).toLocaleDateString("pt-BR");
+  const mensagem = `${item.nome} — ${item.servico || "Serviço"}, ${dataCurta} às ${horario}.`;
+  const aviso = document.createElement("p");
+  aviso.className = "admin-notificacao";
+  aviso.textContent = `Novo agendamento: ${mensagem}`;
+  notificacoesEl.prepend(aviso);
+  setTimeout(() => aviso.remove(), 12000);
+
 }
 
 calendarEl?.addEventListener("click", (e) => {
@@ -486,6 +557,7 @@ cancelarHorarioBtn.addEventListener("click", async () => {
   const remocoes = {};
   horariosParaRemover.forEach((h) => {
     remocoes[`appointments/${dataSelecionada}/${h}`] = null;
+    remocoes[`bookedSlots/${dataSelecionada}/${h}`] = null;
   });
   await update(ref(db), remocoes);
 
@@ -615,6 +687,7 @@ function renderizarListaAgendamentos(dateKey) {
       const remocoes = {};
       horariosParaRemover.forEach((h) => {
         remocoes[`appointments/${dateKey}/${h}`] = null;
+        remocoes[`bookedSlots/${dateKey}/${h}`] = null;
       });
       await update(ref(db), remocoes);
       carregarGradeDoDia(dateKey);
