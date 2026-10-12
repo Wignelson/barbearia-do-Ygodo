@@ -139,13 +139,14 @@ function obterAgendamentoCompleto(horario) {
 
 // O acesso administrativo é autenticado pelo Firebase, nunca por senha no código.
 onAuthStateChanged(auth, (usuario) => {
-  if (usuario) {
+  if (usuario?.email === ADMIN_EMAIL) {
     if (painelSection.hidden) entrarNoPainel();
   } else {
     pararEscutaAgendamentos?.();
     pararEscutaAgendamentos = null;
     loginSection.hidden = false;
     painelSection.hidden = true;
+    if (usuario) signOut(auth);
   }
 });
 
@@ -455,11 +456,23 @@ async function carregarGradeDoDia(dateKey) {
   adminSlotsGrid.innerHTML = "<p class='muted'>Carregando...</p>";
   slotAcaoSection.hidden = true;
 
-  const [customSnap, agendamentosSnap, bloqueadosSnap] = await Promise.all([
-    get(ref(db, `customHours/${dateKey}`)),
-    get(ref(db, `appointments/${dateKey}`)),
-    get(ref(db, `blockedSlots/${dateKey}`))
-  ]);
+  let customSnap;
+  let agendamentosSnap;
+  let bloqueadosSnap;
+  try {
+    [customSnap, agendamentosSnap, bloqueadosSnap] = await Promise.all([
+      get(ref(db, `customHours/${dateKey}`)),
+      get(ref(db, `appointments/${dateKey}`)),
+      get(ref(db, `blockedSlots/${dateKey}`))
+    ]);
+  } catch (error) {
+    console.error("Não foi possível carregar a grade do dia:", error);
+    const acessoNegado = error?.code === "PERMISSION_DENIED";
+    adminSlotsGrid.innerHTML = `<p class='error'>${acessoNegado
+      ? "Acesso negado pelo Firebase. Saia do painel e entre com o e-mail autorizado do barbeiro."
+      : "Não foi possível carregar os horários. Confira a conexão com o Firebase e tente novamente."}</p>`;
+    return;
+  }
 
   let inicio = HORA_ABERTURA_PADRAO * 60;
   let fim = HORA_FECHAMENTO_PADRAO * 60;
