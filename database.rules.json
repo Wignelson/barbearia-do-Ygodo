@@ -25,6 +25,7 @@
     "appointments": {
       ".read": "auth != null && auth.token.email === 'wignercordeiropedroso@gmail.com'",
       "$date": {
+        ".write": "auth != null && auth.token.email === 'wignercordeiropedroso@gmail.com' && $date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
         "$time": {
           ".read": "auth != null && auth.token.email === 'wignercordeiropedroso@gmail.com'",
           ".write": "(auth != null && auth.token.email === 'wignercordeiropedroso@gmail.com') || (auth != null && auth.provider === 'anonymous' && $date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && $time.matches(/^([01][0-9]|2[0-3]):[0-5][0-9]$/) && !data.exists() && !root.child('bookedSlots').child($date).child($time).exists() && root.child('blockedDates').child($date).val() !== true && !root.child('blockedSlots').child($date).child($time).exists())",

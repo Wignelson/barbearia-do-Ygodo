@@ -603,17 +603,30 @@ adminBookingForm.addEventListener("submit", async (e) => {
     duracaoMinutos,
     criadoEm: Date.now()
   };
-  const resultado = await reservarHorarios(db, dataSelecionada, horarioSelecionado, janela, dados, { allowClosedDate: true });
-  if (!resultado.reservado) {
-    adminFeedback.textContent = resultado.motivo === "bloqueado"
-      ? "Um dos horários foi bloqueado. Atualizei a grade; tente novamente."
-      : "Um dos horários acabou de ser ocupado. Atualizei a grade; tente novamente.";
-    await carregarGradeDoDia(dataSelecionada);
-    return;
-  }
+  const submitBtn = adminBookingForm.querySelector("button[type=submit]");
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Agendando...";
+  try {
+    const resultado = await reservarHorarios(db, dataSelecionada, horarioSelecionado, janela, dados, { allowClosedDate: true });
+    if (!resultado.reservado) {
+      adminFeedback.textContent = resultado.motivo === "bloqueado"
+        ? "Um dos horários foi bloqueado. Atualizei a grade; tente novamente."
+        : "Um dos horários acabou de ser ocupado. Atualizei a grade; tente novamente.";
+      await carregarGradeDoDia(dataSelecionada);
+      return;
+    }
 
-  slotAcaoSection.hidden = true;
-  carregarGradeDoDia(dataSelecionada);
+    slotAcaoSection.hidden = true;
+    carregarGradeDoDia(dataSelecionada);
+  } catch (error) {
+    console.error("Não foi possível criar o agendamento pelo painel:", error);
+    adminFeedback.textContent = error?.code === "PERMISSION_DENIED" || error?.code === "database/permission-denied"
+      ? "O Firebase recusou o agendamento. Saia do painel e entre novamente com a conta autorizada do barbeiro."
+      : "Não foi possível agendar agora. Confira a conexão e tente novamente.";
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Agendar cliente";
+  }
 });
 
 duracaoClienteForm.addEventListener("submit", async (e) => {
