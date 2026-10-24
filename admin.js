@@ -44,8 +44,6 @@ const painelSection = document.getElementById("painel-section");
 const loginForm = document.getElementById("login-form");
 const loginErro = document.getElementById("login-erro");
 const sairBtn = document.getElementById("sair-painel");
-const ativarAlertasBtn = document.getElementById("ativar-alertas");
-const alertasStatus = document.getElementById("admin-alertas-status");
 const notificacoesEl = document.getElementById("admin-notificacoes");
 
 const duracoesGrid = document.getElementById("duracoes-grid");
@@ -89,10 +87,6 @@ let bloqueadosDoDia = {};
 let horariosDoDiaAtual = [];
 let pararEscutaAgendamentos = null;
 let idsAgendamentosConhecidos = new Set();
-
-ativarAlertasBtn.addEventListener("click", () => {
-  alertasStatus.textContent = "Os agendamentos funcionam no plano Spark. As notificações push com o painel fechado serão configuradas em uma etapa separada.";
-});
 
 function formatarDataExtenso(key) {
   const [ano, mes, dia] = key.split("-").map(Number);
@@ -235,7 +229,6 @@ function iniciarAvisosAgendamentos() {
     idsAgendamentosConhecidos = new Set(atuais.keys());
   }, (error) => {
     console.error(error);
-    alertasStatus.textContent = "Não foi possível acompanhar novos agendamentos. Confira o acesso do painel ao Firebase.";
   });
 }
 
