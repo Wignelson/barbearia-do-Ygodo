@@ -54,11 +54,20 @@
       </form>
     </section>
 
-    <section id="success-section" class="success" hidden>
-      <p class="success__titulo">Agendamento confirmado!</p>
-      <span class="success__details"></span>
-      <a id="whatsapp-notify" class="btn" href="#" target="_blank" rel="noopener" hidden>Enviar aviso pelo WhatsApp</a>
-      <button id="novo-agendamento" type="button" class="btn">Fazer outro agendamento</button>
+    <section id="success-section" class="success" hidden role="status" aria-live="polite">
+      <div class="success__check" aria-hidden="true">✓</div>
+      <p class="success__eyebrow">HORÁRIO RESERVADO</p>
+      <h2 class="success__titulo">Agendamento confirmado</h2>
+      <p class="success__texto">Seu horário foi guardado na agenda.</p>
+      <div class="success__resumo">
+        <span class="success__rotulo">RESUMO DO AGENDAMENTO</span>
+        <span class="success__details"></span>
+      </div>
+      <p class="success__aviso">A mensagem para o barbeiro está pronta. Revise os dados e toque em enviar no WhatsApp quando quiser avisá-lo.</p>
+      <div class="success__acoes">
+        <a id="whatsapp-notify" class="btn success__whatsapp" href="#" target="_blank" rel="noopener" hidden>Abrir mensagem no WhatsApp <span aria-hidden="true">↗</span></a>
+        <button id="novo-agendamento" type="button" class="btn btn--secundario">Fazer outro agendamento</button>
+      </div>
     </section>
 
     <footer class="rodape">
