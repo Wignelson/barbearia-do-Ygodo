@@ -44,16 +44,13 @@ Depois abra `http://localhost:8000` no navegador. O painel fica em `http://local
 - O cliente entra anonimamente, escolhe data, serviço e horário e informa nome e telefone.
 - A página pública lê somente `bookedSlots`, que contém horários sem nomes ou telefones; os dados do agendamento ficam em `appointments`.
 - A criação do agendamento e a marcação dos horários ocupados são enviadas juntas ao Realtime Database.
+- Depois de confirmar o horário, o cliente pode tocar em **Enviar aviso pelo WhatsApp**. O site abre uma conversa com o barbeiro e prepara uma mensagem com nome, telefone, serviço, data e horário; o cliente revisa e toca em **Enviar** no WhatsApp. O CPF não é solicitado nem enviado.
 - O barbeiro pode fechar dias, bloquear horários, definir horários especiais, cadastrar/editar/remover serviços e definir a duração padrão de cada serviço.
 - No painel, também pode ajustar a duração de um atendimento específico. A grade reserva ou libera blocos de 30 minutos, impede sobreposições e atualiza em tempo real o relógio público quando um atendimento muda.
 - O login do painel usa Firebase Authentication.
 
-### Notificações por WhatsApp
+### Configurar o WhatsApp do barbeiro
 
-O site ainda precisa ser conectado a um provedor oficial de WhatsApp e a um backend para enviar confirmações e lembretes automaticamente. Não coloque tokens do WhatsApp no JavaScript público. O lembrete no dia do atendimento também precisa de uma tarefa agendada no backend.
-
-### Notificações push para o barbeiro
-
-O painel já tem a interface para ativar notificações. O envio push ainda precisa ser integrado às funções de reserva e configurado com chaves VAPID; não publique essa parte junto com a restauração do banco sem concluir essa configuração.
+O número de destino fica em `BARBER_WHATSAPP`, no arquivo `firebase-config.js`, no formato internacional com código do país e DDD, sem espaços nem símbolos. A mensagem abre como rascunho no WhatsApp do celular; o cliente precisa tocar em **Enviar**. Este fluxo não usa WhatsApp Cloud API nem envia mensagens automaticamente.
 
 O app é de uma barbearia/cadeira. As durações, horários padrão e regras de funcionamento estão nos arquivos JavaScript.

@@ -14,5 +14,8 @@ export const firebaseConfig = {
   webPushPublicKey: "COLE_A_CHAVE_PUBLICA_VAPID_AQUI"
 };
 
+// WhatsApp do barbeiro no formato internacional: país + DDD + número, somente dígitos.
+export const BARBER_WHATSAPP = "5511961161605";
+
 // E-mail da conta autorizada para entrar no painel do barbeiro.
 export const ADMIN_EMAIL = "wignercordeiropedroso@gmail.com";

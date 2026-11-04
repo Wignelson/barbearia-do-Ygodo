@@ -1,4 +1,4 @@
-import { firebaseConfig } from "./firebase-config.js";
+import { BARBER_WHATSAPP, firebaseConfig } from "./firebase-config.js";
 import { createCalendar, toKey } from "./calendar.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
@@ -298,6 +298,24 @@ bookingForm.addEventListener("submit", async (e) => {
     successSection.hidden = false;
     successSection.querySelector(".success__details").textContent =
       `${service.nome} — ${formatarDataExtenso(selectedDateKey)} às ${selectedSlot}`;
+
+    const barberPhone = String(BARBER_WHATSAPP || "").replace(/\D/g, "");
+    const whatsappLink = document.getElementById("whatsapp-notify");
+    const message = [
+      "Olá! Gostaria de confirmar meu agendamento na Barbearia do Ygodo.",
+      "",
+      `Nome: ${nome}`,
+      `Telefone: ${telefone}`,
+      `Serviço: ${service.nome}`,
+      `Data: ${formatarDataExtenso(selectedDateKey)}`,
+      `Horário: ${selectedSlot}`,
+      "",
+      "YGODO"
+    ].join("\n");
+    whatsappLink.hidden = !/^\d{10,15}$/.test(barberPhone);
+    if (!whatsappLink.hidden) {
+      whatsappLink.href = `https://wa.me/${barberPhone}?text=${encodeURIComponent(message)}`;
+    }
     bookingForm.reset();
   } catch (error) {
     console.error(error);
