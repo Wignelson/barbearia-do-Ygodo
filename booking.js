@@ -302,7 +302,10 @@ bookingForm.addEventListener("submit", async (e) => {
     const barberPhone = String(BARBER_WHATSAPP || "").replace(/\D/g, "");
     const whatsappLink = document.getElementById("whatsapp-notify");
     const message = [
-      "Olá! Gostaria de solicitar um horário na Barbearia do Ygodo. Aguardo a confirmação do barbeiro.",
+      "Olá! Gostaria de solicitar um horário na Barbearia do Ygodo.",
+      "",
+      "⏳ *HORÁRIO AINDA NÃO CONFIRMADO*",
+      "Aguardo a confirmação do barbeiro.",
       "",
       `Nome: ${nome}`,
       `Telefone: ${telefone}`,
