@@ -304,9 +304,6 @@ bookingForm.addEventListener("submit", async (e) => {
     const message = [
       "Olá! Gostaria de solicitar um horário na Barbearia do Ygodo.",
       "",
-      "⏳ *HORÁRIO AINDA NÃO CONFIRMADO*",
-      "Aguardo a confirmação do barbeiro.",
-      "",
       `Nome: ${nome}`,
       `Telefone: ${telefone}`,
       `Serviço: ${service.nome}`,
