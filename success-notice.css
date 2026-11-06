@@ -1,0 +1,10 @@
+.success__aviso--destaque {
+  padding: 14px 16px;
+  border: 1px solid rgba(201, 162, 39, 0.45);
+  border-left: 3px solid var(--dourado);
+  border-radius: 8px;
+  background: rgba(201, 162, 39, 0.08);
+  color: var(--dourado-claro);
+  font-weight: 600;
+  line-height: 1.55;
+}
