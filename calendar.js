@@ -22,7 +22,7 @@ function startOfDay(date) {
   return d;
 }
 
-export function createCalendar(container, { blockedDates = new Set(), onSelect, selectedKey } = {}) {
+export function createCalendar(container, { blockedDates = new Set(), onSelect, selectedKey, allowBlockedSelection = false } = {}) {
   const today = startOfDay(new Date());
   let viewYear = today.getFullYear();
   let viewMonth = today.getMonth();
@@ -115,11 +115,15 @@ export function createCalendar(container, { blockedDates = new Set(), onSelect, 
       if (past) {
         btn.classList.add("is-disabled");
         btn.disabled = true;
-      } else if (blocked) {
+      } else if (blocked && !allowBlockedSelection) {
         btn.classList.add("is-blocked");
         btn.disabled = true;
         btn.title = "Fechado";
       } else {
+        if (blocked) {
+          btn.classList.add("is-blocked");
+          btn.title = "Fechado — selecione para reabrir";
+        }
         btn.addEventListener("click", () => {
           currentSelectedKey = key;
           render();

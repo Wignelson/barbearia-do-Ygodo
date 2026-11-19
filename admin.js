@@ -186,6 +186,7 @@ function iniciarPainel() {
 
   calendar = createCalendar(calendarEl, {
     blockedDates,
+    allowBlockedSelection: true,
     onSelect: (dateKey) => selecionarDia(dateKey)
   });
 }

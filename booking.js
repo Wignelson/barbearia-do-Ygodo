@@ -175,18 +175,21 @@ async function obterDisponibilidade(dateKey, serviceId) {
   const now = new Date();
   const ehHoje = dateKey === toKey(now);
   const requiredSlots = Math.max(1, Math.ceil(duration / SLOT_MINUTES));
-  const slots = times.map((time, index) => {
-    const window = times.slice(index, index + requiredSlots);
-    let available = closedSnap.val() !== true
-      && window.length === requiredSlots
-      && paraMinutos(time) + duration <= closeAt
-      && !window.some((slot) => booked[slot] === true || blocked[slot] === true);
-    if (ehHoje) {
+  const horariosVisiveis = ehHoje
+    ? times.filter((time) => {
       const [hour, minute] = time.split(":").map(Number);
       const start = new Date();
       start.setHours(hour, minute, 0, 0);
-      if (start <= now) available = false;
-    }
+      return start > now;
+    })
+    : times;
+  const slots = horariosVisiveis.map((time) => {
+    const inicio = paraMinutos(time);
+    const window = Array.from({ length: requiredSlots }, (_, index) =>
+      paraHHMM(inicio + index * SLOT_MINUTES)
+    );
+    let available = closedSnap.val() !== true
+      && !window.some((slot) => booked[slot] === true || blocked[slot] === true);
     return { time, available };
   });
   return { closed: closedSnap.val() === true, duration, slots };
@@ -267,14 +270,10 @@ bookingForm.addEventListener("submit", async (e) => {
     if (!chosen?.available) throw new Error("slot-occupied");
     const service = servicos[selectedServico];
     const duration = Number(service?.duracaoMinutos || 30);
-    const window = gerarGradeHorarios(
-      paraMinutos(data.slots[0]?.time || OPEN_DEFAULT),
-      paraMinutos(data.slots[data.slots.length - 1]?.time || CLOSE_DEFAULT) + SLOT_MINUTES
-    );
-    const startIndex = window.indexOf(selectedSlot);
     const count = Math.max(1, Math.ceil(duration / SLOT_MINUTES));
-    const occupiedTimes = window.slice(startIndex, startIndex + count);
-    if (startIndex < 0 || occupiedTimes.length !== count) throw new Error("slot-occupied");
+    const occupiedTimes = Array.from({ length: count }, (_, index) =>
+      paraHHMM(paraMinutos(selectedSlot) + index * SLOT_MINUTES)
+    );
 
     const writes = {};
     writes[`appointments/${selectedDateKey}/${selectedSlot}`] = {
